@@ -2,68 +2,112 @@
 <html lang="id">
 <head>
   <meta charset="UTF-8" />
-  <title>Deteksi Wajah Kamera</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Deteksi Wajah Glow</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <style>
     body {
       margin: 0;
-      background: #000;
+      background: linear-gradient(to right, #0f0c29, #302b63, #24243e);
+      font-family: 'Segoe UI', sans-serif;
       color: white;
-      font-family: sans-serif;
       text-align: center;
     }
-    canvas, video {
-      position: absolute;
-      top: 0;
-      left: 0;
-    }
+
     h1 {
-      position: relative;
+      margin: 20px;
+      font-size: 26px;
+      text-shadow: 0 0 10px rgba(255, 0, 0, 0.6);
+    }
+
+    #video, #canvas {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      border-radius: 10px;
+    }
+
+    #video {
+      z-index: 1;
+      box-shadow: 0 0 30px rgba(0, 0, 0, 0.4);
+    }
+
+    #canvas {
       z-index: 2;
-      background: rgba(0,0,0,0.5);
-      margin: 0;
-      padding: 10px;
+      pointer-events: none;
+    }
+
+    #errorMsg {
+      color: red;
+      margin-top: 20px;
+    }
+
+    footer {
+      position: fixed;
+      bottom: 10px;
+      width: 100%;
+      color: #ccc;
+      font-size: 14px;
     }
   </style>
 </head>
 <body>
-  <h1>Deteksi Wajah Otomatis</h1>
+  <h1>🎥 Kamera Deteksi Wajah Glow</h1>
   <video id="video" width="720" height="560" autoplay muted></video>
-  <canvas id="canvas"></canvas>
+  <canvas id="canvas" width="720" height="560"></canvas>
+  <div id="errorMsg"></div>
+  <footer>© 2025 Deteksi Wajah by ChatGPT x Kamu</footer>
 
+  <!-- face-api.js dari CDN -->
   <script defer src="https://cdn.jsdelivr.net/npm/face-api.js"></script>
+
+  <!-- JavaScript utama -->
   <script>
     const video = document.getElementById('video');
+    const canvas = document.getElementById('canvas');
+    const errorMsg = document.getElementById('errorMsg');
 
-    // Aktifkan webcam
+    // Fungsi meminta izin kamera & tampilkan video
     async function startVideo() {
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: {} });
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
         video.srcObject = stream;
+        errorMsg.textContent = '';
       } catch (err) {
-        alert('Webcam tidak bisa diakses');
+        errorMsg.textContent = '❌ Tidak bisa mengakses kamera: ' + err.message;
         console.error(err);
       }
     }
 
-    // Jalankan deteksi wajah
+    // Load model dari CDN dan mulai deteksi
+    Promise.all([
+      faceapi.nets.tinyFaceDetector.loadFromUri('https://justadudewhohacks.github.io/face-api.js/models/')
+    ]).then(startVideo);
+
+    // Deteksi wajah saat video aktif
     video.addEventListener('play', () => {
-      const canvas = document.getElementById('canvas');
       const displaySize = { width: video.width, height: video.height };
       faceapi.matchDimensions(canvas, displaySize);
 
       setInterval(async () => {
         const detections = await faceapi.detectAllFaces(video, new faceapi.TinyFaceDetectorOptions());
         const resized = faceapi.resizeResults(detections, displaySize);
-        canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
-        faceapi.draw.drawDetections(canvas, resized);
+
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        resized.forEach(det => {
+          const { x, y, width, height } = det.box;
+          ctx.beginPath();
+          ctx.strokeStyle = 'rgba(255, 0, 0, 0.9)';
+          ctx.shadowColor = 'red';
+          ctx.shadowBlur = 15;
+          ctx.lineWidth = 4;
+          ctx.rect(x, y, width, height);
+          ctx.stroke();
+        });
       }, 100);
     });
-
-    // Load model face-api.js lalu mulai
-    Promise.all([
-      faceapi.nets.tinyFaceDetector.loadFromUri('https://justadudewhohacks.github.io/face-api.js/models/')
-    ]).then(startVideo);
   </script>
 </body>
 </html>
